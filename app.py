@@ -33,7 +33,6 @@ if isinstance(quran_data, list):
 
 print(f"تم تحميل {len(surahs_list)} سورة و {len(quran_ayahs_map)} آية.")
 
-# بناء خريطة التفسير
 tafsir_map = {}
 surah_names_ar = [s['name'] for s in surahs_list]
 
@@ -411,7 +410,6 @@ HTML_TEMPLATE = r"""
             text-align: justify;
         }
 
-        /* ============ آيات القرآن (صفحة كاملة) ============ */
         .surah-container {
             background: #fdfaf3;
             border: 3px double var(--gold);
@@ -509,7 +507,6 @@ HTML_TEMPLATE = r"""
             font-size: 15px;
         }
 
-        /* ============ أدوات القرآن ============ */
         .quran-tools {
             display: flex;
             gap: 10px;
@@ -613,7 +610,6 @@ HTML_TEMPLATE = r"""
             margin-top: 5px;
         }
 
-        /* تمييز كلمة البحث */
         mark {
             background: #ffeb3b;
             color: #000;
@@ -629,7 +625,6 @@ HTML_TEMPLATE = r"""
             font-size: 18px;
         }
 
-        /* ============ نافذة حول التطبيق ============ */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -709,6 +704,67 @@ HTML_TEMPLATE = r"""
             font-size: 15px;
         }
         .contact-link:hover { background: rgba(255,255,255,0.25); }
+
+        /* أزرار المشاركة */
+        .share-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+        .share-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: bold;
+            color: white;
+            text-decoration: none;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+        .share-btn:hover { transform: translateY(-2px); opacity: 0.9; }
+        .share-btn.whatsapp { background: #25d366; }
+        .share-btn.telegram { background: #0088cc; }
+        .share-btn.twitter { background: #1da1f2; }
+        .share-btn.facebook { background: #1877f2; }
+        .share-btn.copy { background: #6c757d; }
+        .share-btn.email { background: #c0392b; }
+
+        .share-link-box {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 8px;
+            align-items: center;
+        }
+        .share-link-box input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 13px;
+            direction: ltr;
+            background: white;
+        }
+        .share-link-box button {
+            padding: 8px 15px;
+            background: var(--main-green);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+        }
+
         .section-box {
             background: #f8f9fa;
             padding: 15px;
@@ -742,7 +798,6 @@ HTML_TEMPLATE = r"""
             font-weight: 500;
         }
 
-        /* ============ وضع الجوال ============ */
         @media (max-width: 600px) {
             .header h1 { font-size: 20px; }
             .hadith-text { font-size: 19px; }
@@ -753,6 +808,7 @@ HTML_TEMPLATE = r"""
             .prayer-times { gap: 8px; font-size: 12px; }
             .ayah-line { font-size: 22px; line-height: 2.5; }
             .surah-header-bar h2 { font-size: 24px; }
+            .share-btn { padding: 8px 14px; font-size: 13px; }
         }
 
         body.dark-mode {
@@ -773,11 +829,12 @@ HTML_TEMPLATE = r"""
         body.dark-mode .dua-box { background: #3a3520; }
         body.dark-mode .dua-box p { color: #e0e0e0; }
         body.dark-mode .tafsir-panel { background: #1e3a2f; color: #ddd; }
+        body.dark-mode .share-link-box { background: #333; }
+        body.dark-mode .share-link-box input { background: #222; color: white; border-color: #555; }
     </style>
 </head>
 <body>
 
-<!-- ============ الهيدر ============ -->
 <div class="header">
     <h1>🕌 الموسوعة الإسلامية الشاملة 📚</h1>
 
@@ -794,7 +851,6 @@ HTML_TEMPLATE = r"""
     </div>
 </div>
 
-<!-- ============ شريط المعلومات ============ -->
 <div class="info-bar">
     <div class="info-time" id="currentTime">--:--:--</div>
     <div class="info-date">
@@ -812,7 +868,6 @@ HTML_TEMPLATE = r"""
     <div class="location-info" id="locationInfo">📍 جاري تحديد الموقع...</div>
 </div>
 
-<!-- ============ التحكم بالنص ============ -->
 <div class="text-controls">
     <button onclick="changeFontSize(1)">➕ تكبير النص</button>
     <span class="size-display" id="fontSizeDisplay">22</span>
@@ -820,7 +875,6 @@ HTML_TEMPLATE = r"""
     <button onclick="resetFontSize()">↺ الافتراضي</button>
 </div>
 
-<!-- ============ أزرار الكتب ============ -->
 <div class="books-bar">
     <button class="book-btn" onclick="selectQuran()" id="quranBtn">📖 القرآن الكريم</button>
     {% for key, value in books.items() %}
@@ -828,7 +882,6 @@ HTML_TEMPLATE = r"""
     {% endfor %}
 </div>
 
-<!-- ============ منطقة العرض ============ -->
 <div class="content-area">
     <div id="content">
         <div class="loading">اختر كتاباً من الأعلى للبدء 🕌</div>
@@ -855,6 +908,30 @@ HTML_TEMPLATE = r"""
                     💬 <span>تواصل عبر واتساب</span>
                 </a>
             </div>
+        </div>
+
+        <!-- ============ قسم مشاركة التطبيق ============ -->
+        <div class="section-box" style="background:#e8f5e9;border-right-color:#25d366;">
+            <h3>📢 شارك التطبيق مع أصدقائك</h3>
+            <p style="text-align:center;margin-bottom:10px;">الدال على الخير كفاعله 🤲</p>
+
+            <div class="share-buttons">
+                <a href="#" id="shareWhatsapp" class="share-btn whatsapp" target="_blank">💬 واتساب</a>
+                <a href="#" id="shareTelegram" class="share-btn telegram" target="_blank">✈️ تيليجرام</a>
+                <a href="#" id="shareTwitter" class="share-btn twitter" target="_blank">🐦 تويتر</a>
+                <a href="#" id="shareFacebook" class="share-btn facebook" target="_blank">📘 فيسبوك</a>
+                <a href="#" id="shareEmail" class="share-btn email">📧 إيميل</a>
+                <button class="share-btn copy" onclick="copyShareLink()">📋 نسخ الرابط</button>
+            </div>
+
+            <div class="share-link-box">
+                <input type="text" id="shareLinkInput" readonly onclick="this.select()">
+                <button onclick="copyShareLink()">نسخ</button>
+            </div>
+
+            <p style="text-align:center;font-size:13px;color:#666;margin-top:10px;">
+                ✨ كل شخص يفتح التطبيق بسببك = أجر لك في ميزان حسناتك ✨
+            </p>
         </div>
 
         <div class="section-box">
@@ -934,7 +1011,7 @@ HTML_TEMPLATE = r"""
     setInterval(updateTime, 1000);
     updateTime();
 
-    // ============ الموقع ومواقيت الصلاة ============
+    // ============ الموقع ============
     function detectLocation() {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
@@ -980,7 +1057,7 @@ HTML_TEMPLATE = r"""
 
     detectLocation();
 
-    // ============ إدارة الخط ============
+    // ============ الخط ============
     function changeFontSize(delta) {
         fontSize = Math.max(14, Math.min(48, fontSize + delta));
         document.getElementById('fontSizeDisplay').innerText = fontSize;
@@ -1016,8 +1093,53 @@ HTML_TEMPLATE = r"""
     }
 
     // ============ حول التطبيق ============
-    function showAbout() { document.getElementById('aboutModal').classList.add('show'); }
+    function showAbout() {
+        document.getElementById('aboutModal').classList.add('show');
+        setupShareLinks();
+    }
     function hideAbout() { document.getElementById('aboutModal').classList.remove('show'); }
+
+    // ============ المشاركة ============
+    function getShareMessage() {
+        return '🕌 الموسوعة الإسلامية الشاملة 📚\n\n' +
+               '📖 القرآن الكريم كاملاً مع التفسير\n' +
+               '📚 14 كتاباً من كتب الحديث النبوي\n' +
+               '🕌 مواقيت الصلاة والتاريخ الهجري\n\n' +
+               '✨ تطبيق مجاني يخدم الإسلام والمسلمين ✨\n\n' +
+               '🔗 رابط التطبيق:';
+    }
+
+    function setupShareLinks() {
+        const url = window.location.origin;
+        const message = getShareMessage();
+        const fullMessage = message + '\n' + url;
+
+        document.getElementById('shareLinkInput').value = url;
+
+        document.getElementById('shareWhatsapp').href =
+            'https://wa.me/?text=' + encodeURIComponent(fullMessage);
+        document.getElementById('shareTelegram').href =
+            'https://t.me/share/url?url=' + encodeURIComponent(url) + '&text=' + encodeURIComponent(message);
+        document.getElementById('shareTwitter').href =
+            'https://twitter.com/intent/tweet?text=' + encodeURIComponent(message) + '&url=' + encodeURIComponent(url);
+        document.getElementById('shareFacebook').href =
+            'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(url);
+        document.getElementById('shareEmail').href =
+            'mailto:?subject=' + encodeURIComponent('الموسوعة الإسلامية الشاملة') + '&body=' + encodeURIComponent(fullMessage);
+    }
+
+    function copyShareLink() {
+        const url = window.location.origin;
+        const text = getShareMessage() + '\n' + url;
+        navigator.clipboard.writeText(text).then(() => {
+            alert('✅ تم نسخ الرابط والرسالة\nيمكنك لصقها في أي مكان للمشاركة');
+        }).catch(() => {
+            const input = document.getElementById('shareLinkInput');
+            input.select();
+            document.execCommand('copy');
+            alert('✅ تم نسخ الرابط');
+        });
+    }
 
     // ============ الكتب ============
     function setActiveBook(bookId) {
@@ -1107,14 +1229,12 @@ HTML_TEMPLATE = r"""
 
         const surahsArray = JSON.parse(`{{ surahs|tojson }}`);
 
-        // قائمة السور
         let surahSelectHtml = '<select id="surahSelect" onchange="showSurah(this.value)">';
         surahsArray.forEach(s => {
             surahSelectHtml += `<option value="${s.id}" ${s.id === currentSurah ? 'selected' : ''}>${s.id}. سورة ${s.name}</option>`;
         });
         surahSelectHtml += '</select>';
 
-        // قائمة الآيات
         let ayahSelectHtml = '<select id="ayahSelect" onchange="scrollToAyah(this.value)">';
         ayahSelectHtml += '<option value="">📌 انتقل إلى آية...</option>';
         data.ayahs.forEach(a => {
@@ -1122,9 +1242,7 @@ HTML_TEMPLATE = r"""
         });
         ayahSelectHtml += '</select>';
 
-        // بناء الآيات
         let ayahsHtml = '';
-        // البسملة (ماعدا التوبة والفاتحة لأن الفاتحة البسملة فيها آية)
         if (currentSurah !== 1 && currentSurah !== 9) {
             ayahsHtml += `<div class="basmala">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div>`;
         }
@@ -1244,7 +1362,7 @@ HTML_TEMPLATE = r"""
         }
     }
 
-    // ============ أدوات مساعدة ============
+    // ============ أدوات ============
     function getBookName(bookId) {
         const names = {
             'quran': 'القرآن الكريم',
@@ -1276,7 +1394,6 @@ HTML_TEMPLATE = r"""
         return div.innerHTML;
     }
 
-    // تمييز كلمة البحث
     function highlightText(text, query) {
         const escaped = escapeHtml(text);
         if (!query) return escaped;
