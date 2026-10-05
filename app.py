@@ -93,17 +93,6 @@ def load_hadith_book(book_id):
     loaded_books_cache[book_id] = all_hadiths
     return all_hadiths
 
-def get_books_info():
-    """إرجاع قائمة الكتب مع عدد الأحاديث"""
-    info = {}
-    for book_id in BOOKS.keys():
-        hadiths = load_hadith_book(book_id)
-        info[book_id] = {
-            'name': BOOKS[book_id],
-            'count': len(hadiths)
-        }
-    return info
-
 # ==================== 3. المسارات ====================
 @app.route('/')
 def index():
@@ -111,21 +100,18 @@ def index():
 
 @app.route('/api/book/<book_id>')
 def get_book_info(book_id):
-    """إرجاع معلومات كتاب كامل"""
     if book_id == 'quran':
-        return jsonify({'name': 'القرآن الكريم', 'total': len(surahs_list), 'surahs': surahs_list})
+        return jsonify({'name': 'القرآن الكريم', 'total': len(surahs_list)})
     if book_id not in BOOKS:
         return jsonify({'error': 'كتاب غير موجود'}), 404
     hadiths = load_hadith_book(book_id)
     return jsonify({
         'name': BOOKS[book_id],
-        'total': len(hadiths),
-        'index': len(hadiths) - 1 if hadiths else 0
+        'total': len(hadiths)
     })
 
 @app.route('/api/hadith')
 def get_hadith():
-    """إرجاع حديث محدد"""
     book_id = request.args.get('book', 'bukhari')
     index = request.args.get('index', 0, type=int)
 
@@ -148,7 +134,6 @@ def get_hadith():
 
 @app.route('/api/surah')
 def get_surah():
-    """إرجاع سورة كاملة"""
     surah_num = request.args.get('surah', 1, type=int)
     ayahs = []
     for (s, a), text in sorted(quran_ayahs_map.items()):
@@ -200,6 +185,7 @@ HTML_TEMPLATE = r"""
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>الموسوعة الإسلامية الشاملة</title>
+    <script src="https://unpkg.com/adhan/lib/bundles/adhan.umd.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         :root {
@@ -233,7 +219,6 @@ HTML_TEMPLATE = r"""
             font-size: 26px;
             color: var(--gold);
             margin-bottom: 12px;
-            text-shadow: 0 1px 3px rgba(0,0,0,0.3);
         }
         .top-actions {
             display: flex;
@@ -255,12 +240,54 @@ HTML_TEMPLATE = r"""
         }
         .top-btn:hover { background: #40916c; }
 
+        /* ============ شريط المعلومات (الوقت والتاريخ ومواقيت الصلاة) ============ */
+        .info-bar {
+            background: #2d6a4f;
+            color: white;
+            padding: 12px 20px;
+            border-bottom: 2px solid var(--gold);
+            text-align: center;
+        }
+        .info-time {
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--gold);
+            margin-bottom: 5px;
+        }
+        .info-date {
+            font-size: 14px;
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+        .prayer-times {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            font-size: 14px;
+        }
+        .prayer-item {
+            background: rgba(255,255,255,0.1);
+            padding: 5px 12px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .prayer-item .name { color: var(--gold); font-weight: bold; }
+        .prayer-item .time { font-weight: bold; }
+        .location-info {
+            font-size: 13px;
+            color: #c9e6d0;
+            margin-top: 5px;
+        }
+
         /* ============ صندوق البحث ============ */
         .search-area {
             display: flex;
             gap: 6px;
             max-width: 900px;
-            margin: 0 auto;
+            margin: 12px auto 0;
             align-items: center;
         }
         .search-area input {
@@ -303,7 +330,6 @@ HTML_TEMPLATE = r"""
             font-size: 14px;
             font-family: inherit;
         }
-        .text-controls button:hover { background: #40916c; }
         .text-controls .size-display {
             background: white;
             padding: 6px 14px;
@@ -447,19 +473,6 @@ HTML_TEMPLATE = r"""
         }
         .copy-btn:hover { background: #b8935a; }
 
-        /* ============ التنقل بالآيات للقرآن ============ */
-        .ayah-nav {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin: 15px 0;
-            padding: 10px;
-            background: var(--light-green);
-            border-radius: 8px;
-            font-weight: bold;
-            color: var(--main-green);
-        }
-
         /* ============ نتائج البحث ============ */
         .search-results {
             max-height: 400px;
@@ -498,6 +511,8 @@ HTML_TEMPLATE = r"""
             .hadith-card { padding: 15px; }
             .nav-btn { padding: 10px 20px; font-size: 14px; min-width: 90px; }
             .book-btn { font-size: 12px; padding: 6px 12px; }
+            .info-time { font-size: 22px; }
+            .prayer-times { gap: 8px; font-size: 12px; }
         }
 
         /* ============ الوضع الليلي ============ */
@@ -527,8 +542,7 @@ HTML_TEMPLATE = r"""
 
     <div class="top-actions">
         <button class="top-btn" onclick="toggleDark()">🌙 ليلي</button>
-        <button class="top-btn" onclick="window.scrollTo(0,document.body.scrollHeight)">⬇ آخر الصفحة</button>
-        <button class="top-btn" onclick="window.scrollTo(0,0)">⬆ أول الصفحة</button>
+        <button class="top-btn" onclick="detectLocation()">📍 تحديد الموقع</button>
         <button class="top-btn" id="bookmarkBtn" onclick="toggleBookmark()">🔖 علامة</button>
     </div>
 
@@ -536,6 +550,24 @@ HTML_TEMPLATE = r"""
         <input type="text" id="searchInput" placeholder="اكتب كلمة للبحث..." onkeydown="if(event.key==='Enter') doSearch()">
         <button onclick="doSearch()">🔍</button>
     </div>
+</div>
+
+<!-- ============ شريط المعلومات ============ -->
+<div class="info-bar" id="infoBar">
+    <div class="info-time" id="currentTime">--:--:--</div>
+    <div class="info-date">
+        <span id="gregorianDate">جاري تحميل التاريخ...</span><br>
+        <span id="hijriDate" style="color:var(--gold);">جاري تحميل التاريخ الهجري...</span>
+    </div>
+    <div class="prayer-times" id="prayerTimes">
+        <div class="prayer-item"><span class="name">الفجر</span><span class="time" id="fajrTime">--:--</span></div>
+        <div class="prayer-item"><span class="name">الشروق</span><span class="time" id="sunriseTime">--:--</span></div>
+        <div class="prayer-item"><span class="name">الظهر</span><span class="time" id="dhuhrTime">--:--</span></div>
+        <div class="prayer-item"><span class="name">العصر</span><span class="time" id="asrTime">--:--</span></div>
+        <div class="prayer-item"><span class="name">المغرب</span><span class="time" id="maghribTime">--:--</span></div>
+        <div class="prayer-item"><span class="name">العشاء</span><span class="time" id="ishaTime">--:--</span></div>
+    </div>
+    <div class="location-info" id="locationInfo">📍 جاري تحديد الموقع...</div>
 </div>
 
 <!-- ============ التحكم بالنص ============ -->
@@ -569,6 +601,95 @@ HTML_TEMPLATE = r"""
     let currentSurahData = null;
     let fontSize = 22;
     let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '{}');
+    let userLat = null;
+    let userLng = null;
+
+    // ============ الوقت والتاريخ ============
+    function updateTime() {
+        const now = new Date();
+        // الوقت
+        document.getElementById('currentTime').innerText = now.toLocaleTimeString('ar-SA', {
+            hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+        });
+
+        // التاريخ الميلادي
+        document.getElementById('gregorianDate').innerText = now.toLocaleDateString('ar-SA', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        });
+
+        // التاريخ الهجري
+        try {
+            const hijriFormatter = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', {
+                year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
+            });
+            document.getElementById('hijriDate').innerText = hijriFormatter.format(now) + ' هـ';
+        } catch(e) {
+            document.getElementById('hijriDate').innerText = '';
+        }
+    }
+    setInterval(updateTime, 1000);
+    updateTime();
+
+    // ============ تحديد الموقع ومواقيت الصلاة ============
+    function detectLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    userLat = position.coords.latitude;
+                    userLng = position.coords.longitude;
+                    calculatePrayerTimes(userLat, userLng);
+                    reverseGeocode(userLat, userLng);
+                },
+                (error) => {
+                    document.getElementById('locationInfo').innerText = '⚠️ لم يتم السماح بالوصول إلى الموقع';
+                    // استخدام مكة كافتراضي
+                    userLat = 21.4225;
+                    userLng = 39.8262;
+                    calculatePrayerTimes(userLat, userLng);
+                }
+            );
+        } else {
+            document.getElementById('locationInfo').innerText = '⚠️ المتصفح لا يدعم تحديد الموقع';
+        }
+    }
+
+    async function reverseGeocode(lat, lng) {
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ar`);
+            const data = await res.json();
+            const city = data.address?.city || data.address?.town || data.address?.village || data.address?.state || '';
+            const country = data.address?.country || '';
+            document.getElementById('locationInfo').innerText = `📍 ${city}${city && country ? '، ' : ''}${country}`;
+        } catch(e) {
+            document.getElementById('locationInfo').innerText = `📍 ${lat.toFixed(2)}°N, ${lng.toFixed(2)}°E`;
+        }
+    }
+
+    function calculatePrayerTimes(lat, lng) {
+        try {
+            const coordinates = new adhan.Coordinates(lat, lng);
+            const params = adhan.CalculationMethod.MuslimWorldLeague();
+            const date = new Date();
+            const prayerTimes = new adhan.PrayerTimes(coordinates, date, params);
+
+            const formatTime = (d) => {
+                if (!d) return '--:--';
+                return d.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit', hour12: true });
+            };
+
+            document.getElementById('fajrTime').innerText = formatTime(prayerTimes.fajr);
+            document.getElementById('sunriseTime').innerText = formatTime(prayerTimes.sunrise);
+            document.getElementById('dhuhrTime').innerText = formatTime(prayerTimes.dhuhr);
+            document.getElementById('asrTime').innerText = formatTime(prayerTimes.asr);
+            document.getElementById('maghribTime').innerText = formatTime(prayerTimes.maghrib);
+            document.getElementById('ishaTime').innerText = formatTime(prayerTimes.isha);
+        } catch(e) {
+            console.error('Error calculating prayer times:', e);
+        }
+    }
+
+    // تشغيل تحديد الموقع تلقائياً
+    detectLocation();
 
     // ============ إدارة الخط ============
     function changeFontSize(delta) {
@@ -701,8 +822,6 @@ HTML_TEMPLATE = r"""
 
         const ayah = data.ayahs[currentAyahIndex];
 
-        // قائمة السور
-        const surahOptions = `{{ surahs|tojson }}`.replace(/'/g, "&#39;");
         const surahsArray = JSON.parse(`{{ surahs|tojson }}`);
 
         let surahSelectHtml = '<select onchange="showSurah(this.value)" style="width:100%;padding:10px;font-size:16px;border-radius:8px;border:1px solid #ccc;margin-bottom:15px;font-family:inherit;">';
