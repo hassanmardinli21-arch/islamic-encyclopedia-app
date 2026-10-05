@@ -31,6 +31,8 @@ if isinstance(quran_data, list):
             ayah_num = ayah.get('id')
             quran_ayahs_map[(surah_num, ayah_num)] = ayah.get('text', '')
 
+print(f"تم تحميل {len(surahs_list)} سورة و {len(quran_ayahs_map)} آية.")
+
 # بناء خريطة التفسير
 tafsir_map = {}
 surah_names_ar = [s['name'] for s in surahs_list]
@@ -40,7 +42,7 @@ if isinstance(tafsir_list, list) and tafsir_list and isinstance(tafsir_list[0], 
         surah_name = surah_obj.get('surah_name', '').strip()
         surah_num = None
         for i, name in enumerate(surah_names_ar, start=1):
-            if name == surah_name or surah_name in name:
+            if name == surah_name or surah_name in name or name in surah_name:
                 surah_num = i
                 break
         if not surah_num:
@@ -48,6 +50,8 @@ if isinstance(tafsir_list, list) and tafsir_list and isinstance(tafsir_list[0], 
         for ayah in surah_obj.get('ayahs', []):
             ayah_num = ayah.get('number', 0)
             tafsir_map[(surah_num, ayah_num)] = ayah.get('text', '')
+
+print(f"تم تحميل {len(tafsir_map)} تفسير.")
 
 # ==================== 2. الكتب ====================
 BOOKS = {
@@ -98,18 +102,6 @@ def load_hadith_book(book_id):
 def index():
     return render_template_string(HTML_TEMPLATE, books=BOOKS, surahs=surahs_list)
 
-@app.route('/api/book/<book_id>')
-def get_book_info(book_id):
-    if book_id == 'quran':
-        return jsonify({'name': 'القرآن الكريم', 'total': len(surahs_list)})
-    if book_id not in BOOKS:
-        return jsonify({'error': 'كتاب غير موجود'}), 404
-    hadiths = load_hadith_book(book_id)
-    return jsonify({
-        'name': BOOKS[book_id],
-        'total': len(hadiths)
-    })
-
 @app.route('/api/hadith')
 def get_hadith():
     book_id = request.args.get('book', 'bukhari')
@@ -128,8 +120,7 @@ def get_hadith():
         'total': len(hadiths),
         'id': h.get('idInBook', index + 1),
         'text': h.get('arabic', ''),
-        'narrator': h.get('english', {}).get('narrator', ''),
-        'english_text': h.get('english', {}).get('text', '')
+        'narrator': h.get('english', {}).get('narrator', '')
     })
 
 @app.route('/api/surah')
@@ -200,11 +191,7 @@ HTML_TEMPLATE = r"""
             background: var(--bg);
             min-height: 100vh;
             color: var(--text-dark);
-            padding: 0;
-            margin: 0;
         }
-
-        /* ============ الهيدر ============ */
         .header {
             background: var(--main-green);
             color: white;
@@ -240,7 +227,6 @@ HTML_TEMPLATE = r"""
         }
         .top-btn:hover { background: #40916c; }
 
-        /* ============ شريط المعلومات (الوقت والتاريخ ومواقيت الصلاة) ============ */
         .info-bar {
             background: #2d6a4f;
             color: white;
@@ -282,7 +268,6 @@ HTML_TEMPLATE = r"""
             margin-top: 5px;
         }
 
-        /* ============ صندوق البحث ============ */
         .search-area {
             display: flex;
             gap: 6px;
@@ -309,7 +294,6 @@ HTML_TEMPLATE = r"""
         }
         .search-area button:hover { background: #b8935a; }
 
-        /* ============ أزرار التحكم بالنص ============ */
         .text-controls {
             display: flex;
             justify-content: center;
@@ -340,7 +324,6 @@ HTML_TEMPLATE = r"""
             text-align: center;
         }
 
-        /* ============ أزرار الكتب ============ */
         .books-bar {
             background: var(--main-green);
             padding: 10px;
@@ -371,7 +354,6 @@ HTML_TEMPLATE = r"""
             border-color: var(--gold);
         }
 
-        /* ============ منطقة العرض ============ */
         .content-area {
             max-width: 1000px;
             margin: 20px auto;
@@ -429,7 +411,142 @@ HTML_TEMPLATE = r"""
             text-align: justify;
         }
 
-        /* ============ أزرار التنقل ============ */
+        /* ============ آيات القرآن (صفحة كاملة) ============ */
+        .surah-container {
+            background: #fdfaf3;
+            border: 3px double var(--gold);
+            border-radius: 15px;
+            padding: 25px;
+        }
+        .surah-header-bar {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #1a4d2e 0%, #2d6a4f 100%);
+            color: white;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .surah-header-bar h2 {
+            font-size: 32px;
+            color: var(--gold);
+            margin-bottom: 8px;
+        }
+        .surah-header-bar .surah-info {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .basmala {
+            text-align: center;
+            font-size: 26px;
+            color: var(--main-green);
+            font-weight: bold;
+            margin: 20px 0;
+            padding: 15px;
+            border-top: 1px dashed var(--gold);
+            border-bottom: 1px dashed var(--gold);
+        }
+        .ayah-line {
+            font-size: 26px;
+            line-height: 2.8;
+            text-align: justify;
+            color: #1a3d2e;
+            padding: 8px 15px;
+            margin: 5px 0;
+            border-radius: 8px;
+            transition: background 0.2s;
+            position: relative;
+        }
+        .ayah-line:hover { background: #f0f8f0; }
+        .ayah-line.highlight {
+            background: #fff3cd;
+            box-shadow: 0 0 0 2px var(--gold);
+        }
+        .ayah-num-badge {
+            display: inline-block;
+            background: var(--gold);
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            padding: 2px 10px;
+            border-radius: 15px;
+            margin: 0 8px;
+            vertical-align: middle;
+            font-family: sans-serif;
+        }
+        .ayah-actions {
+            display: none;
+            margin-top: 8px;
+            gap: 8px;
+        }
+        .ayah-line:hover .ayah-actions { display: flex; }
+        .ayah-action-btn {
+            background: var(--main-green);
+            color: white;
+            border: none;
+            padding: 4px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: inherit;
+        }
+        .ayah-action-btn:hover { background: #40916c; }
+        .tafsir-panel {
+            display: none;
+            background: #f0f9ff;
+            border-right: 4px solid #28a745;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            font-size: 18px;
+            line-height: 2;
+            text-align: justify;
+        }
+        .tafsir-panel.show { display: block; }
+        .tafsir-title {
+            color: #28a745;
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+
+        /* ============ أدوات القرآن ============ */
+        .quran-tools {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .quran-tools select {
+            padding: 10px 15px;
+            font-size: 16px;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+            font-family: inherit;
+            flex: 1;
+            min-width: 200px;
+            cursor: pointer;
+        }
+        .quran-tools select:focus {
+            outline: none;
+            border-color: var(--main-green);
+        }
+        .quran-tools button {
+            padding: 10px 20px;
+            background: var(--main-green);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: bold;
+        }
+        .quran-tools button:hover { background: #40916c; }
+
         .nav-buttons {
             display: flex;
             justify-content: center;
@@ -473,9 +590,8 @@ HTML_TEMPLATE = r"""
         }
         .copy-btn:hover { background: #b8935a; }
 
-        /* ============ نتائج البحث ============ */
         .search-results {
-            max-height: 400px;
+            max-height: 600px;
             overflow-y: auto;
             margin-top: 15px;
         }
@@ -497,11 +613,133 @@ HTML_TEMPLATE = r"""
             margin-top: 5px;
         }
 
+        /* تمييز كلمة البحث */
+        mark {
+            background: #ffeb3b;
+            color: #000;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+
         .loading {
             text-align: center;
             padding: 40px;
             color: var(--main-green);
             font-size: 18px;
+        }
+
+        /* ============ نافذة حول التطبيق ============ */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            border: 3px solid var(--gold);
+        }
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: #c0392b;
+            color: white;
+            border: none;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .modal-content h2 {
+            text-align: center;
+            color: var(--main-green);
+            font-size: 26px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--gold);
+        }
+        .dev-card {
+            background: linear-gradient(135deg, #1a4d2e 0%, #2d6a4f 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .dev-card .dev-name {
+            font-size: 24px;
+            color: var(--gold);
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        .dev-contact {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .contact-link {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: rgba(255,255,255,0.15);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: background 0.2s;
+            font-size: 15px;
+        }
+        .contact-link:hover { background: rgba(255,255,255,0.25); }
+        .section-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-right: 4px solid var(--gold);
+        }
+        .section-box h3 {
+            color: var(--main-green);
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        .section-box p, .section-box li {
+            font-size: 15px;
+            line-height: 1.9;
+            color: #333;
+        }
+        .section-box ul { padding-right: 20px; }
+        .dua-box {
+            background: #fff9e6;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            border-right: 4px solid var(--gold);
+            text-align: center;
+        }
+        .dua-box p {
+            font-size: 17px;
+            line-height: 2;
+            color: #1a4d2e;
+            font-weight: 500;
         }
 
         /* ============ وضع الجوال ============ */
@@ -513,25 +751,28 @@ HTML_TEMPLATE = r"""
             .book-btn { font-size: 12px; padding: 6px 12px; }
             .info-time { font-size: 22px; }
             .prayer-times { gap: 8px; font-size: 12px; }
+            .ayah-line { font-size: 22px; line-height: 2.5; }
+            .surah-header-bar h2 { font-size: 24px; }
         }
 
-        /* ============ الوضع الليلي ============ */
         body.dark-mode {
             --bg: #1a1a1a;
             --text-dark: #e0e0e0;
         }
-        body.dark-mode .hadith-card {
-            background: #2a2a2a;
-            border-color: #444;
-        }
-        body.dark-mode .hadith-text {
-            background: #333;
-            color: #e0e0e0;
-        }
+        body.dark-mode .hadith-card, body.dark-mode .modal-content, body.dark-mode .quran-tools { background: #2a2a2a; border-color: #444; color: #e0e0e0; }
+        body.dark-mode .hadith-text { background: #333; color: #e0e0e0; }
+        body.dark-mode .surah-container { background: #222; border-color: var(--gold); }
+        body.dark-mode .ayah-line { color: #e0e0e0; }
+        body.dark-mode .ayah-line:hover { background: #2f2f2f; }
         body.dark-mode .text-controls { background: #2a2a2a; border-color: #444; }
         body.dark-mode .text-controls .size-display { background: #333; color: white; border-color: #555; }
         body.dark-mode .narrator { background: #3a3a2a; color: #e0c060; }
         body.dark-mode .search-area input { background: #333; color: white; }
+        body.dark-mode .section-box { background: #333; }
+        body.dark-mode .section-box p, body.dark-mode .section-box li { color: #ddd; }
+        body.dark-mode .dua-box { background: #3a3520; }
+        body.dark-mode .dua-box p { color: #e0e0e0; }
+        body.dark-mode .tafsir-panel { background: #1e3a2f; color: #ddd; }
     </style>
 </head>
 <body>
@@ -543,7 +784,8 @@ HTML_TEMPLATE = r"""
     <div class="top-actions">
         <button class="top-btn" onclick="toggleDark()">🌙 ليلي</button>
         <button class="top-btn" onclick="detectLocation()">📍 تحديد الموقع</button>
-        <button class="top-btn" id="bookmarkBtn" onclick="toggleBookmark()">🔖 علامة</button>
+        <button class="top-btn" onclick="toggleBookmark()">🔖 علامة</button>
+        <button class="top-btn" onclick="showAbout()">ℹ️ حول التطبيق</button>
     </div>
 
     <div class="search-area">
@@ -553,13 +795,13 @@ HTML_TEMPLATE = r"""
 </div>
 
 <!-- ============ شريط المعلومات ============ -->
-<div class="info-bar" id="infoBar">
+<div class="info-bar">
     <div class="info-time" id="currentTime">--:--:--</div>
     <div class="info-date">
         <span id="gregorianDate">جاري تحميل التاريخ...</span><br>
         <span id="hijriDate" style="color:var(--gold);">جاري تحميل التاريخ الهجري...</span>
     </div>
-    <div class="prayer-times" id="prayerTimes">
+    <div class="prayer-times">
         <div class="prayer-item"><span class="name">الفجر</span><span class="time" id="fajrTime">--:--</span></div>
         <div class="prayer-item"><span class="name">الشروق</span><span class="time" id="sunriseTime">--:--</span></div>
         <div class="prayer-item"><span class="name">الظهر</span><span class="time" id="dhuhrTime">--:--</span></div>
@@ -579,7 +821,7 @@ HTML_TEMPLATE = r"""
 </div>
 
 <!-- ============ أزرار الكتب ============ -->
-<div class="books-bar" id="booksBar">
+<div class="books-bar">
     <button class="book-btn" onclick="selectQuran()" id="quranBtn">📖 القرآن الكريم</button>
     {% for key, value in books.items() %}
     <button class="book-btn" data-book="{{ key }}" onclick="selectBook('{{ key }}')">{{ value }}</button>
@@ -593,63 +835,118 @@ HTML_TEMPLATE = r"""
     </div>
 </div>
 
+<!-- ============ نافذة حول التطبيق ============ -->
+<div class="modal-overlay" id="aboutModal" onclick="if(event.target===this) hideAbout()">
+    <div class="modal-content">
+        <button class="modal-close" onclick="hideAbout()">✕</button>
+        <h2>🕌 حول التطبيق 📚</h2>
+
+        <div class="dev-card">
+            <div class="dev-name">👤 حسان مارديني</div>
+            <div style="font-size:14px;opacity:0.9;margin-bottom:10px;">مطوّر وصاحب التطبيق</div>
+            <div class="dev-contact">
+                <a href="tel:+905060917640" class="contact-link">
+                    📞 <span>+90 506 091 7640</span>
+                </a>
+                <a href="mailto:hassanmardinli21@gmail.com" class="contact-link">
+                    📧 <span>hassanmardinli21@gmail.com</span>
+                </a>
+                <a href="https://wa.me/905060917640" target="_blank" class="contact-link">
+                    💬 <span>تواصل عبر واتساب</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="section-box">
+            <h3>📖 محتوى التطبيق</h3>
+            <ul>
+                <li>القرآن الكريم كاملاً (114 سورة)</li>
+                <li>تفسير السعدي للآيات</li>
+                <li>14 كتاباً من كتب الحديث النبوي الشريف</li>
+                <li>مواقيت الصلاة حسب موقعك</li>
+                <li>التاريخ الهجري والميلادي</li>
+            </ul>
+        </div>
+
+        <div class="section-box">
+            <h3>🤲 دعاء للمستخدمين</h3>
+        </div>
+        <div class="dua-box">
+            <p>اللَّهُمَّ اجْعَلْ هَذَا الْعَمَلَ خَالِصًا لِوَجْهِكَ الْكَرِيمِ، وَانْفَعْ بِهِ الْمُسْلِمِينَ</p>
+        </div>
+        <div class="dua-box">
+            <p>اللَّهُمَّ اجْعَلِ الْقُرْآنَ الْعَظِيمَ رَبِيعَ قُلُوبِنَا، وَنُورَ صُدُورِنَا، وَجَلَاءَ هُمُومِنَا وَأَحْزَانِنَا</p>
+        </div>
+        <div class="dua-box">
+            <p>اللَّهُمَّ اغْفِرْ لَنَا وَلِوَالِدِينَا وَلِوَالِدِي وَالِدِينَا، وَارْحَمْهُمْ كَمَا رَبَّوْنَا صِغَارًا</p>
+        </div>
+        <div class="dua-box">
+            <p>اللَّهُمَّ اجْعَلْ هَذَا الْعَمَلَ صَدَقَةً جَارِيَةً لِوَالِدَيَّ وَلِوَالِدِي وَالِدَيَّ، وَلِجَمِيعِ الْمُسْلِمِينَ</p>
+        </div>
+        <div class="dua-box">
+            <p>اللَّهُمَّ ارْحَمْ وَالِدَيَّ وَوَالِدِي وَالِدَيَّ، وَأَسْكِنْهُمْ فَسِيحَ جَنَّاتِكَ، وَاجْمَعْنَا بِهِمْ فِي مُسْتَقَرِّ رَحْمَتِكَ</p>
+        </div>
+        <div class="dua-box">
+            <p>اللَّهُمَّ اجْزِ خَيْرًا كُلَّ مَنْ سَاهَمَ فِي نَشْرِ هَذَا الْعِلْمِ النَّافِعِ</p>
+        </div>
+
+        <div class="section-box">
+            <h3>💝 شكر وتقدير</h3>
+            <p>نتقدم بالشكر الجزيل لكل من ساهم في إثراء هذا التطبيق، ونسأل الله أن يجعله في ميزان حسناتهم أجمعين.</p>
+        </div>
+
+        <div class="section-box">
+            <h3>📜 إخلاء مسؤولية</h3>
+            <p>هذا التطبيق مجاني ولا يهدف للربح. البيانات الموجودة من مصادر موثوقة، ويُرجع للعلماء في المسائل الفقهية الدقيقة.</p>
+        </div>
+
+        <div style="text-align:center;color:#888;font-size:13px;margin-top:20px;">
+            الإصدار 1.0 | © 2025
+        </div>
+    </div>
+</div>
+
 <script>
     let currentBook = null;
     let currentIndex = 0;
     let currentSurah = 1;
-    let currentAyahIndex = 0;
     let currentSurahData = null;
     let fontSize = 22;
     let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '{}');
-    let userLat = null;
-    let userLng = null;
+    let currentSearchQuery = '';
 
     // ============ الوقت والتاريخ ============
     function updateTime() {
         const now = new Date();
-        // الوقت
         document.getElementById('currentTime').innerText = now.toLocaleTimeString('ar-SA', {
             hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
         });
-
-        // التاريخ الميلادي
         document.getElementById('gregorianDate').innerText = now.toLocaleDateString('ar-SA', {
             weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
         });
-
-        // التاريخ الهجري
         try {
             const hijriFormatter = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', {
                 year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
             });
             document.getElementById('hijriDate').innerText = hijriFormatter.format(now) + ' هـ';
-        } catch(e) {
-            document.getElementById('hijriDate').innerText = '';
-        }
+        } catch(e) {}
     }
     setInterval(updateTime, 1000);
     updateTime();
 
-    // ============ تحديد الموقع ومواقيت الصلاة ============
+    // ============ الموقع ومواقيت الصلاة ============
     function detectLocation() {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 (position) => {
-                    userLat = position.coords.latitude;
-                    userLng = position.coords.longitude;
-                    calculatePrayerTimes(userLat, userLng);
-                    reverseGeocode(userLat, userLng);
+                    calculatePrayerTimes(position.coords.latitude, position.coords.longitude);
+                    reverseGeocode(position.coords.latitude, position.coords.longitude);
                 },
                 (error) => {
-                    document.getElementById('locationInfo').innerText = '⚠️ لم يتم السماح بالوصول إلى الموقع';
-                    // استخدام مكة كافتراضي
-                    userLat = 21.4225;
-                    userLng = 39.8262;
-                    calculatePrayerTimes(userLat, userLng);
+                    document.getElementById('locationInfo').innerText = '⚠️ لم يتم السماح بالوصول إلى الموقع - استخدام مكة';
+                    calculatePrayerTimes(21.4225, 39.8262);
                 }
             );
-        } else {
-            document.getElementById('locationInfo').innerText = '⚠️ المتصفح لا يدعم تحديد الموقع';
         }
     }
 
@@ -671,38 +968,30 @@ HTML_TEMPLATE = r"""
             const params = adhan.CalculationMethod.MuslimWorldLeague();
             const date = new Date();
             const prayerTimes = new adhan.PrayerTimes(coordinates, date, params);
-
-            const formatTime = (d) => {
-                if (!d) return '--:--';
-                return d.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit', hour12: true });
-            };
-
+            const formatTime = (d) => d ? d.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit', hour12: true }) : '--:--';
             document.getElementById('fajrTime').innerText = formatTime(prayerTimes.fajr);
             document.getElementById('sunriseTime').innerText = formatTime(prayerTimes.sunrise);
             document.getElementById('dhuhrTime').innerText = formatTime(prayerTimes.dhuhr);
             document.getElementById('asrTime').innerText = formatTime(prayerTimes.asr);
             document.getElementById('maghribTime').innerText = formatTime(prayerTimes.maghrib);
             document.getElementById('ishaTime').innerText = formatTime(prayerTimes.isha);
-        } catch(e) {
-            console.error('Error calculating prayer times:', e);
-        }
+        } catch(e) { console.error(e); }
     }
 
-    // تشغيل تحديد الموقع تلقائياً
     detectLocation();
 
     // ============ إدارة الخط ============
     function changeFontSize(delta) {
         fontSize = Math.max(14, Math.min(48, fontSize + delta));
         document.getElementById('fontSizeDisplay').innerText = fontSize;
-        document.querySelectorAll('.hadith-text, .quran-ayah-text').forEach(el => {
+        document.querySelectorAll('.hadith-text, .ayah-line').forEach(el => {
             el.style.fontSize = fontSize + 'px';
         });
     }
     function resetFontSize() {
         fontSize = 22;
         document.getElementById('fontSizeDisplay').innerText = fontSize;
-        document.querySelectorAll('.hadith-text, .quran-ayah-text').forEach(el => {
+        document.querySelectorAll('.hadith-text, .ayah-line').forEach(el => {
             el.style.fontSize = fontSize + 'px';
         });
     }
@@ -716,32 +1005,31 @@ HTML_TEMPLATE = r"""
         document.body.classList.add('dark-mode');
     }
 
-    // ============ العلامات المرجعية ============
+    // ============ العلامات ============
     function toggleBookmark() {
         if (!currentBook) return;
         const key = currentBook + '_' + currentIndex;
-        if (bookmarks[key]) {
-            delete bookmarks[key];
-        } else {
-            bookmarks[key] = { book: currentBook, index: currentIndex, time: Date.now() };
-        }
+        if (bookmarks[key]) delete bookmarks[key];
+        else bookmarks[key] = { book: currentBook, index: currentIndex, time: Date.now() };
         localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
         alert(bookmarks[key] ? '✅ تمت إضافة علامة' : '🗑️ تم حذف العلامة');
     }
 
-    // ============ اختيار كتاب ============
+    // ============ حول التطبيق ============
+    function showAbout() { document.getElementById('aboutModal').classList.add('show'); }
+    function hideAbout() { document.getElementById('aboutModal').classList.remove('show'); }
+
+    // ============ الكتب ============
     function setActiveBook(bookId) {
         document.querySelectorAll('.book-btn').forEach(b => b.classList.remove('active'));
-        if (bookId === 'quran') {
-            document.getElementById('quranBtn').classList.add('active');
-        } else {
-            document.querySelector(`[data-book="${bookId}"]`).classList.add('active');
-        }
+        if (bookId === 'quran') document.getElementById('quranBtn').classList.add('active');
+        else document.querySelector(`[data-book="${bookId}"]`).classList.add('active');
     }
 
     async function selectBook(bookId) {
         currentBook = bookId;
         currentIndex = 0;
+        currentSearchQuery = '';
         setActiveBook(bookId);
         await showHadith(0);
     }
@@ -760,7 +1048,6 @@ HTML_TEMPLATE = r"""
             }
 
             currentIndex = data.index;
-
             const isBookmarked = bookmarks[currentBook + '_' + currentIndex];
 
             content.innerHTML = `
@@ -770,7 +1057,7 @@ HTML_TEMPLATE = r"""
                         <span class="hadith-number">حديث رقم ${data.id} / ${data.total}</span>
                     </div>
                     ${data.narrator ? `<div class="narrator">🎙️ ${data.narrator}</div>` : ''}
-                    <div class="hadith-text" id="hadithText" style="font-size:${fontSize}px;">${escapeHtml(data.text)}</div>
+                    <div class="hadith-text" id="hadithText" style="font-size:${fontSize}px;">${highlightText(data.text, currentSearchQuery)}</div>
                     <div class="copy-buttons">
                         <button class="copy-btn" onclick="copyHadith()">📋 نسخ الحديث</button>
                         <button class="copy-btn" onclick="toggleBookmark()">${isBookmarked ? '🔖 إزالة العلامة' : '🔖 علامة'}</button>
@@ -783,7 +1070,7 @@ HTML_TEMPLATE = r"""
                 </div>
             `;
         } catch (e) {
-            content.innerHTML = '<div class="hadith-card" style="text-align:center;color:red;">حدث خطأ في التحميل</div>';
+            content.innerHTML = '<div class="hadith-card" style="text-align:center;color:red;">حدث خطأ</div>';
         }
     }
 
@@ -803,84 +1090,123 @@ HTML_TEMPLATE = r"""
             const data = await res.json();
             currentSurah = surahNum;
             currentSurahData = data;
-            currentAyahIndex = 0;
-
-            renderSurah();
+            renderFullSurah();
         } catch (e) {
             content.innerHTML = '<div class="hadith-card" style="text-align:center;color:red;">حدث خطأ</div>';
         }
     }
 
-    function renderSurah() {
+    function renderFullSurah() {
         const content = document.getElementById('content');
         const data = currentSurahData;
 
         if (!data.ayahs || data.ayahs.length === 0) {
-            content.innerHTML = '<div class="hadith-card" style="text-align:center;">لا توجد آيات</div>';
+            content.innerHTML = '<div class="hadith-card" style="text-align:center;">لا توجد آيات لهذه السورة</div>';
             return;
         }
 
-        const ayah = data.ayahs[currentAyahIndex];
-
         const surahsArray = JSON.parse(`{{ surahs|tojson }}`);
 
-        let surahSelectHtml = '<select onchange="showSurah(this.value)" style="width:100%;padding:10px;font-size:16px;border-radius:8px;border:1px solid #ccc;margin-bottom:15px;font-family:inherit;">';
+        // قائمة السور
+        let surahSelectHtml = '<select id="surahSelect" onchange="showSurah(this.value)">';
         surahsArray.forEach(s => {
             surahSelectHtml += `<option value="${s.id}" ${s.id === currentSurah ? 'selected' : ''}>${s.id}. سورة ${s.name}</option>`;
         });
         surahSelectHtml += '</select>';
 
+        // قائمة الآيات
+        let ayahSelectHtml = '<select id="ayahSelect" onchange="scrollToAyah(this.value)">';
+        ayahSelectHtml += '<option value="">📌 انتقل إلى آية...</option>';
+        data.ayahs.forEach(a => {
+            ayahSelectHtml += `<option value="${a.ayah}">آية ${a.ayah}</option>`;
+        });
+        ayahSelectHtml += '</select>';
+
+        // بناء الآيات
+        let ayahsHtml = '';
+        // البسملة (ماعدا التوبة والفاتحة لأن الفاتحة البسملة فيها آية)
+        if (currentSurah !== 1 && currentSurah !== 9) {
+            ayahsHtml += `<div class="basmala">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div>`;
+        }
+
+        data.ayahs.forEach(a => {
+            ayahsHtml += `
+                <div class="ayah-line" id="ayah-${a.ayah}" data-ayah="${a.ayah}">
+                    <span>${highlightText(a.text, currentSearchQuery)}</span>
+                    <span class="ayah-num-badge">${a.ayah}</span>
+                    <div class="ayah-actions">
+                        <button class="ayah-action-btn" onclick="copyAyah(${a.ayah})">📋 نسخ</button>
+                        ${a.tafsir ? `<button class="ayah-action-btn" onclick="toggleTafsir(${a.ayah})">📖 التفسير</button>` : ''}
+                    </div>
+                    ${a.tafsir ? `<div class="tafsir-panel" id="tafsir-${a.ayah}"><div class="tafsir-title">📖 التفسير (السعدي):</div>${highlightText(a.tafsir, currentSearchQuery)}</div>` : ''}
+                </div>
+            `;
+        });
+
         content.innerHTML = `
-            ${surahSelectHtml}
-            <div class="hadith-card">
-                <div class="hadith-header">
-                    <span class="hadith-book-name">📖 سورة ${data.name}</span>
-                    <span class="hadith-number">آية ${ayah.ayah} / ${data.ayahs.length}</span>
+            <div class="quran-tools">
+                ${surahSelectHtml}
+                ${ayahSelectHtml}
+                <button onclick="document.querySelectorAll('.tafsir-panel').forEach(t=>t.classList.toggle('show'))">📖 إظهار/إخفاء التفسير</button>
+                <button onclick="copySurah()">📋 نسخ السورة</button>
+            </div>
+            <div class="surah-container">
+                <div class="surah-header-bar">
+                    <h2>سورة ${data.name}</h2>
+                    <div class="surah-info">${data.ayahs.length} آية</div>
                 </div>
-                <div class="hadith-text quran-ayah-text" id="hadithText" style="font-size:${fontSize + 4}px;text-align:center;line-height:2.5;color:#1a5f3f;font-weight:bold;">
-                    ${escapeHtml(ayah.text)}
-                </div>
-                ${ayah.tafsir ? `<div class="narrator" style="margin-top:15px;">📖 التفسير (السعدي)</div><div class="hadith-text" style="font-size:${fontSize - 4}px;background:#f0f9ff;border-right:4px solid #28a745;">${escapeHtml(ayah.tafsir)}</div>` : ''}
-                <div class="copy-buttons">
-                    <button class="copy-btn" onclick="copyHadith()">📋 نسخ الآية</button>
-                </div>
+                ${ayahsHtml}
             </div>
             <div class="nav-buttons">
-                <button class="nav-btn" onclick="prevAyah()" ${currentAyahIndex === 0 ? 'disabled' : ''}>◀ السابقة</button>
-                <button class="nav-btn" onclick="showSurah(${currentSurah})">🔄 السورة</button>
-                <button class="nav-btn" onclick="nextAyah()" ${currentAyahIndex >= data.ayahs.length - 1 ? 'disabled' : ''}>التالية ▶</button>
+                <button class="nav-btn" onclick="showSurah(${currentSurah - 1})" ${currentSurah <= 1 ? 'disabled' : ''}>◀ السورة السابقة</button>
+                <button class="nav-btn" onclick="scrollToTop()">⬆ أعلى</button>
+                <button class="nav-btn" onclick="showSurah(${currentSurah + 1})" ${currentSurah >= 114 ? 'disabled' : ''}>السورة التالية ▶</button>
             </div>
         `;
     }
 
-    function nextAyah() {
-        if (currentAyahIndex < currentSurahData.ayahs.length - 1) {
-            currentAyahIndex++;
-            renderSurah();
-        } else if (currentSurah < 114) {
-            showSurah(currentSurah + 1);
+    function scrollToAyah(ayahNum) {
+        if (!ayahNum) return;
+        const el = document.getElementById('ayah-' + ayahNum);
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.classList.add('highlight');
+            setTimeout(() => el.classList.remove('highlight'), 3000);
         }
     }
 
-    function prevAyah() {
-        if (currentAyahIndex > 0) {
-            currentAyahIndex--;
-            renderSurah();
-        } else if (currentSurah > 1) {
-            showSurah(currentSurah - 1).then(() => {
-                currentAyahIndex = currentSurahData.ayahs.length - 1;
-                renderSurah();
-            });
-        }
+    function scrollToTop() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function toggleTafsir(ayahNum) {
+        const el = document.getElementById('tafsir-' + ayahNum);
+        if (el) el.classList.toggle('show');
+    }
+
+    function copyAyah(ayahNum) {
+        const el = document.getElementById('ayah-' + ayahNum);
+        if (!el) return;
+        const text = el.querySelector('span').innerText;
+        navigator.clipboard.writeText(text).then(() => alert('✅ تم نسخ الآية'));
+    }
+
+    function copySurah() {
+        const container = document.querySelector('.surah-container');
+        if (!container) return;
+        let text = container.querySelector('h2').innerText + '\n\n';
+        container.querySelectorAll('.ayah-line').forEach(line => {
+            text += line.querySelector('span').innerText + ' (' + line.dataset.ayah + ')\n';
+        });
+        navigator.clipboard.writeText(text).then(() => alert('✅ تم نسخ السورة كاملة'));
     }
 
     // ============ البحث ============
     async function doSearch() {
         const query = document.getElementById('searchInput').value.trim();
-        if (!query) {
-            alert('اكتب كلمة للبحث');
-            return;
-        }
+        if (!query) { alert('اكتب كلمة للبحث'); return; }
+        currentSearchQuery = query;
+
         if (!currentBook || currentBook === 'quran') {
             currentBook = 'bukhari';
             setActiveBook('bukhari');
@@ -908,13 +1234,13 @@ HTML_TEMPLATE = r"""
                 html += `<div class="search-result-item" onclick="showHadith(${item.index})">
                             <div class="res-num">📌 حديث رقم ${item.id}</div>
                             ${item.narrator ? `<div style="color:#b8860b;font-size:13px;margin:5px 0;">🎙️ ${item.narrator}</div>` : ''}
-                            <div class="res-text">${escapeHtml(item.text.substring(0, 200))}${item.text.length > 200 ? '...' : ''}</div>
+                            <div class="res-text">${highlightText(item.text.substring(0, 250), query)}${item.text.length > 250 ? '...' : ''}</div>
                         </div>`;
             });
             html += '</div></div>';
             content.innerHTML = html;
         } catch (e) {
-            content.innerHTML = '<div class="hadith-card" style="text-align:center;color:red;">حدث خطأ في البحث</div>';
+            content.innerHTML = '<div class="hadith-card" style="text-align:center;color:red;">حدث خطأ</div>';
         }
     }
 
@@ -948,6 +1274,18 @@ HTML_TEMPLATE = r"""
         const div = document.createElement('div');
         div.textContent = text || '';
         return div.innerHTML;
+    }
+
+    // تمييز كلمة البحث
+    function highlightText(text, query) {
+        const escaped = escapeHtml(text);
+        if (!query) return escaped;
+        try {
+            const regex = new RegExp('(' + query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+            return escaped.replace(regex, '<mark>$1</mark>');
+        } catch(e) {
+            return escaped;
+        }
     }
 </script>
 </body>
