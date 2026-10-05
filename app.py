@@ -4,7 +4,7 @@ from flask import Flask, render_template_string, request, jsonify
 
 app = Flask(__name__)
 
-# ----------------- 1. تحميل القرآن والتفسير -----------------
+# ==================== 1. تحميل القرآن والتفسير ====================
 QURAN_PATH = 'quran.json'
 TAFSIR_PATH = 'tafsir_saadi.json'
 
@@ -19,7 +19,7 @@ def load_json(filepath):
 quran_data = load_json(QURAN_PATH)
 tafsir_list = load_json(TAFSIR_PATH)
 
-# قائمة أسماء السور بالترتيب (لتحويل الاسم العربي إلى رقم)
+# قائمة أسماء السور لتحويل الاسم العربي إلى رقم
 surah_names_ar = [
     "الفاتحة", "البقرة", "آل عمران", "النساء", "المائدة", "الأنعام", "الأعراف", "الأنفال",
     "التوبة", "يونس", "هود", "يوسف", "الرعد", "إبراهيم", "الحجر", "النحل", "الإسراء", "الكهف",
@@ -36,14 +36,11 @@ surah_names_ar = [
     "الماعون", "الكوثر", "الكافرون", "النصر", "المسد", "الإخلاص", "الفلق", "الناس"
 ]
 
-# تحويل التفسير إلى قاموس للبحث السريع
+# بناء خريطة التفسير
 tafsir_map = {}
-
-# الحالة 1: ملف التفسير قائمة من كائنات السور (البنية الفعلية لملف السعدي)
 if isinstance(tafsir_list, list) and tafsir_list and isinstance(tafsir_list[0], dict) and 'ayahs' in tafsir_list[0]:
     for surah_obj in tafsir_list:
         surah_name = surah_obj.get('surah_name', '').strip()
-        # البحث عن رقم السورة من الاسم
         surah_num = None
         for i, name in enumerate(surah_names_ar, start=1):
             if name == surah_name:
@@ -54,8 +51,6 @@ if isinstance(tafsir_list, list) and tafsir_list and isinstance(tafsir_list[0], 
         for ayah in surah_obj.get('ayahs', []):
             ayah_num = ayah.get('number', 0)
             tafsir_map[(surah_num, ayah_num)] = ayah.get('text', '')
-
-# الحالة 2: ملف التفسير قائمة عادية (بنية بديلة)
 else:
     for item in tafsir_list:
         if isinstance(item, dict):
@@ -64,7 +59,7 @@ else:
 
 print(f"تم تحميل {len(tafsir_map)} تفسير.")
 
-# ----------------- 2. قائمة الكتب المتاحة -----------------
+# ==================== 2. قائمة الكتب ====================
 BOOKS = {
     'quran': 'القرآن الكريم والتفسير',
     'bukhari': 'صحيح البخاري',
@@ -109,7 +104,7 @@ def load_hadith_book(book_id):
     loaded_books_cache[book_id] = all_hadiths
     return all_hadiths
 
-# ----------------- 3. المسارات (Routes) -----------------
+# ==================== 3. المسارات ====================
 @app.route('/')
 def index():
     return render_template_string(HTML_TEMPLATE, books=BOOKS)
@@ -155,7 +150,7 @@ def search():
 
     return jsonify(results)
 
-# ----------------- 4. واجهة المستخدم (HTML) -----------------
+# ==================== 4. HTML ====================
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -164,21 +159,119 @@ HTML_TEMPLATE = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>الموسوعة الإسلامية الشاملة</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: #2c3e50; margin-bottom: 20px; }
-        .search-box { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
-        select, input { padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; flex: 1; min-width: 150px; }
-        button { padding: 10px 20px; font-size: 16px; background-color: #27ae60; color: white; border: none; border-radius: 5px; cursor: pointer; }
-        button:hover { background-color: #219150; }
-        .result { border-bottom: 1px solid #eee; padding: 15px 0; }
-        .hadith-info { display: flex; justify-content: space-between; color: #7f8c8d; font-size: 14px; margin-bottom: 5px; }
-        .hadith-text { font-size: 18px; line-height: 1.8; margin-bottom: 10px; white-space: pre-wrap; }
-        .copy-btn { background-color: #3498db; padding: 5px 10px; font-size: 14px; }
-        .copy-btn:hover { background-color: #2980b9; }
-        .narrator { font-weight: bold; color: #e67e22; font-size: 14px; margin-bottom: 5px; }
-        .tafsir { background-color: #f9f9f9; border-top: 2px solid #28a745; margin-top: 10px; padding: 10px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 25px;
+            font-size: 28px;
+        }
+        .search-box {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 25px;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+        }
+        select, input {
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            flex: 1;
+            min-width: 150px;
+            font-family: inherit;
+        }
+        select:focus, input:focus {
+            outline: none;
+            border-color: #27ae60;
+        }
+        button {
+            padding: 12px 25px;
+            font-size: 16px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        button:hover { background: #219150; }
+        .result {
+            border-bottom: 1px solid #eee;
+            padding: 20px 0;
+        }
+        .result:last-child { border-bottom: none; }
+        .hadith-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        .hadith-text {
+            font-size: 19px;
+            line-height: 2;
+            margin-bottom: 10px;
+            white-space: pre-wrap;
+            color: #2c3e50;
+        }
+        .copy-btn {
+            background: #3498db;
+            padding: 6px 14px;
+            font-size: 13px;
+            border-radius: 6px;
+        }
+        .copy-btn:hover { background: #2980b9; }
+        .narrator {
+            font-weight: bold;
+            color: #e67e22;
+            font-size: 15px;
+            margin-bottom: 8px;
+        }
+        .tafsir {
+            background: #f0f9ff;
+            border-right: 4px solid #28a745;
+            margin-top: 12px;
+            padding: 15px;
+            border-radius: 8px;
+            line-height: 1.9;
+            font-size: 17px;
+        }
+        .tafsir strong { color: #28a745; }
         .hidden { display: none; }
+        .quran-ayah {
+            font-size: 22px;
+            line-height: 2.2;
+            color: #1a5f3f;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+        .loading { text-align: center; padding: 30px; color: #666; font-size: 18px; }
+        @media (max-width: 600px) {
+            .container { padding: 15px; }
+            h1 { font-size: 22px; }
+            .hadith-text { font-size: 17px; }
+        }
     </style>
 </head>
 <body>
@@ -190,7 +283,7 @@ HTML_TEMPLATE = """
                 <option value="{{ key }}">{{ value }}</option>
                 {% endfor %}
             </select>
-            
+
             <select id="surahSelect" class="hidden">
                 <option value="1">الفاتحة</option>
                 <option value="2">البقرة</option>
@@ -309,7 +402,6 @@ HTML_TEMPLATE = """
             </select>
 
             <input type="text" id="searchInput" class="hidden" placeholder="ابحث عن كلمة أو حديث...">
-            
             <button onclick="doSearch()">بحث 🔍</button>
         </div>
         <div id="results"></div>
@@ -320,7 +412,7 @@ HTML_TEMPLATE = """
             const book = document.getElementById('bookSelect').value;
             const surahSelect = document.getElementById('surahSelect');
             const searchInput = document.getElementById('searchInput');
-            
+
             if (book === 'quran') {
                 surahSelect.classList.remove('hidden');
                 searchInput.classList.add('hidden');
@@ -335,42 +427,46 @@ HTML_TEMPLATE = """
             const query = document.getElementById('searchInput').value;
             const surah = document.getElementById('surahSelect').value;
             const resultsDiv = document.getElementById('results');
-            
-            resultsDiv.innerHTML = '<p style="text-align:center;">جاري البحث...</p>';
 
-            const response = await fetch(`/search?book=${book}&query=${encodeURIComponent(query)}&surah=${surah}`);
-            const data = await response.json();
+            resultsDiv.innerHTML = '<p class="loading">جاري البحث...</p>';
 
-            if (data.error) {
-                resultsDiv.innerHTML = `<p style="color:red;text-align:center;">${data.error}</p>`;
-                return;
-            }
+            try {
+                const response = await fetch(`/search?book=${book}&query=${encodeURIComponent(query)}&surah=${surah}`);
+                const data = await response.json();
 
-            if (data.length === 0) {
-                resultsDiv.innerHTML = '<p style="text-align:center;">لا توجد نتائج مطابقة.</p>';
-                return;
-            }
-
-            let html = '';
-            data.forEach(item => {
-                if (item.type === 'quran') {
-                    html += `<div class="result">
-                                <strong>سورة ${item.surah} آية ${item.ayah}:</strong><br>
-                                <p>${item.text}</p>
-                                <div class="tafsir"><strong>التفسير:</strong><br>${item.tafsir}</div>
-                             </div>`;
-                } else {
-                    html += `<div class="result">
-                                <div class="hadith-info">
-                                    <span>رقم الحديث: ${item.id}</span>
-                                    <button class="copy-btn" onclick="copyText(this)">نسخ 📋</button>
-                                </div>
-                                ${item.narrator ? `<div class="narrator">${item.narrator}</div>` : ''}
-                                <div class="hadith-text">${item.text}</div>
-                             </div>`;
+                if (data.error) {
+                    resultsDiv.innerHTML = `<p style="color:red;text-align:center;">${data.error}</p>`;
+                    return;
                 }
-            });
-            resultsDiv.innerHTML = html;
+
+                if (data.length === 0) {
+                    resultsDiv.innerHTML = '<p style="text-align:center;padding:20px;">لا توجد نتائج مطابقة.</p>';
+                    return;
+                }
+
+                let html = '';
+                data.forEach(item => {
+                    if (item.type === 'quran') {
+                        html += `<div class="result">
+                                    <strong style="color:#27ae60;font-size:17px;">سورة ${item.surah} - آية ${item.ayah}</strong>
+                                    <div class="quran-ayah">${item.text}</div>
+                                    <div class="tafsir"><strong>📖 التفسير:</strong><br>${item.tafsir}</div>
+                                 </div>`;
+                    } else {
+                        html += `<div class="result">
+                                    <div class="hadith-info">
+                                        <span>📌 رقم الحديث: ${item.id}</span>
+                                        <button class="copy-btn" onclick="copyText(this)">نسخ 📋</button>
+                                    </div>
+                                    ${item.narrator ? `<div class="narrator">🎙️ ${item.narrator}</div>` : ''}
+                                    <div class="hadith-text">${item.text}</div>
+                                 </div>`;
+                    }
+                });
+                resultsDiv.innerHTML = html;
+            } catch (e) {
+                resultsDiv.innerHTML = '<p style="color:red;text-align:center;">حدث خطأ في البحث.</p>';
+            }
         }
 
         function copyText(btn) {
@@ -381,7 +477,7 @@ HTML_TEMPLATE = """
                 setTimeout(() => { btn.innerText = originalText; }, 2000);
             });
         }
-        
+
         toggleSearchMode();
     </script>
 </body>
