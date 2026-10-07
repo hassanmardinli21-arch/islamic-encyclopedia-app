@@ -229,6 +229,16 @@ HTML_TEMPLATE = r"""
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-H1GL9JD2KP"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-H1GL9JD2KP');
+    </script>
+    <!-- End Google Analytics -->
+    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>الموسوعة الإسلامية الشاملة</title>
@@ -801,7 +811,6 @@ HTML_TEMPLATE = r"""
         }
     }
 
-    // استعادة الحالة عند فتح الصفحة
     (async function initWakeLock() {
         const wasEnabled = localStorage.getItem('wakeLockEnabled') === 'true';
         if (wasEnabled && 'wakeLock' in navigator) {
@@ -822,7 +831,6 @@ HTML_TEMPLATE = r"""
         }
     })();
 
-    // إعادة التفعيل تلقائياً عند العودة للصفحة
     document.addEventListener('visibilitychange', async () => {
         if (document.visibilityState === 'visible' && wakeLockDesired && !wakeLock) {
             try {
@@ -839,7 +847,7 @@ HTML_TEMPLATE = r"""
     function checkFlash() {
         const hideForever = localStorage.getItem('hideFlashForever');
         const lastVersion = localStorage.getItem('appVersion');
-        const CURRENT_VERSION = '1.7';
+        const CURRENT_VERSION = '1.8';
         
         if (hideForever === 'true') return;
         if (lastVersion === CURRENT_VERSION) return;
@@ -851,7 +859,7 @@ HTML_TEMPLATE = r"""
     
     function closeFlash() {
         document.getElementById('flashContainer').classList.remove('show');
-        localStorage.setItem('appVersion', '1.7');
+        localStorage.setItem('appVersion', '1.8');
     }
     
     function neverShowFlash() {
@@ -873,7 +881,6 @@ HTML_TEMPLATE = r"""
     
     checkFlash();
 
-    // ============ Timer ============
     function startReadingTimer() {
         if (readingTimerInterval) clearInterval(readingTimerInterval);
         readingTimerInterval = setInterval(() => { readingSeconds++; updateTimerDisplay(); }, 1000);
