@@ -550,11 +550,11 @@ HTML_TEMPLATE = r"""
         <div class="flash-content">
             <span class="section-title">🎉 آخر التحديثات:</span>
             <ul>
+                <li>✅ إصلاح التاريخ الهجري</li>
                 <li>✅ زر إبقاء الشاشة مضيئة 💡</li>
-                <li>✅ إصلاح الحروف المنفصلة في العربية</li>
-                <li>✅ تمييز كلمات البحث بالأصفر</li>
+                <li>✅ إصلاح الحروف المنفصلة</li>
+                <li>✅ Google Analytics</li>
                 <li>✅ فهرس جانبي للنتائج</li>
-                <li>✅ قسم مشاركة التطبيق</li>
             </ul>
             <span class="section-title">📚 ميزات التطبيق:</span>
             <ul>
@@ -595,7 +595,6 @@ HTML_TEMPLATE = r"""
                 <li>سيتحول الزر إلى <strong>"🔆 الشاشة مضيئة"</strong> بالذهبي.</li>
                 <li>الشاشة ستبقى مضيئة أثناء القراءة.</li>
                 <li>لإلغاء الميزة: اضغط الزر مرة أخرى.</li>
-                <li>الحالة محفوظة تلقائياً — ستعود عند إعادة فتح التطبيق.</li>
             </ul>
         </div>
         
@@ -774,9 +773,7 @@ HTML_TEMPLATE = r"""
         }
         try {
             wakeLock = await navigator.wakeLock.request('screen');
-            wakeLock.addEventListener('release', () => {
-                updateWakeLockBtn();
-            });
+            wakeLock.addEventListener('release', () => { updateWakeLockBtn(); });
             wakeLockDesired = true;
             localStorage.setItem('wakeLockEnabled', 'true');
             updateWakeLockBtn();
@@ -804,11 +801,8 @@ HTML_TEMPLATE = r"""
     }
 
     async function toggleWakeLock() {
-        if (wakeLockDesired) {
-            await releaseWakeLock();
-        } else {
-            await requestWakeLock();
-        }
+        if (wakeLockDesired) { await releaseWakeLock(); }
+        else { await requestWakeLock(); }
     }
 
     (async function initWakeLock() {
@@ -818,9 +812,7 @@ HTML_TEMPLATE = r"""
             updateWakeLockBtn();
             try {
                 wakeLock = await navigator.wakeLock.request('screen');
-                wakeLock.addEventListener('release', () => {
-                    updateWakeLockBtn();
-                });
+                wakeLock.addEventListener('release', () => { updateWakeLockBtn(); });
                 updateWakeLockBtn();
             } catch(e) {
                 console.log('Wake Lock auto-restore failed:', e);
@@ -847,7 +839,7 @@ HTML_TEMPLATE = r"""
     function checkFlash() {
         const hideForever = localStorage.getItem('hideFlashForever');
         const lastVersion = localStorage.getItem('appVersion');
-        const CURRENT_VERSION = '1.8';
+        const CURRENT_VERSION = '1.9';
         
         if (hideForever === 'true') return;
         if (lastVersion === CURRENT_VERSION) return;
@@ -859,7 +851,7 @@ HTML_TEMPLATE = r"""
     
     function closeFlash() {
         document.getElementById('flashContainer').classList.remove('show');
-        localStorage.setItem('appVersion', '1.8');
+        localStorage.setItem('appVersion', '1.9');
     }
     
     function neverShowFlash() {
@@ -897,27 +889,32 @@ HTML_TEMPLATE = r"""
     const ARABIC_DAYS = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
     const HIJRI_MONTHS = ['محرّم','صفر','ربيع الأول','ربيع الآخر','جمادى الأولى','جمادى الآخرة','رجب','شعبان','رمضان','شوّال','ذو القعدة','ذو الحجة'];
 
+    // ============ التصحيح: التحويل الصحيح إلى التاريخ الهجري ============
     function toHijri(date) {
-        let d = date.getDate(), m = date.getMonth() + 1, y = date.getFullYear();
-        if (m < 3) { y -= 1; m += 12; }
-        let a = Math.floor(y / 100), b = 2 - a + Math.floor(a / 4);
-        if (y < 1583) b = 0;
-        if (y === 1582) { if (m > 10) b = -10; if (m === 10) { b = 0; if (d > 4) b = -10; } }
-        let jd = Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + d + b - 1524;
-        b = 0;
-        if (jd > 2299160) { a = Math.floor((jd - 1867216.25) / 36524.25); b = 1 + a - Math.floor(a / 4); }
-        let bb = jd + b + 1524, cc = Math.floor((bb - 122.1) / 365.25), dd = Math.floor(365.25 * cc);
-        let ee = Math.floor((bb - dd) / 30.6001);
-        d = bb - dd - Math.floor(30.6001 * ee);
-        m = ee < 14 ? ee - 1 : ee - 13;
-        y = m > 2 ? cc - 4716 : cc - 4715;
-        let jdH = Math.floor((11 * y + 3) / 30) + 354 * y + Math.floor(30 * (m - 1)) - Math.floor((m - 1) / 2) + d + 1948440 - 385;
-        let l = jdH - 1948440 + 10632, n = Math.floor((l - 1) / 10631);
+        const d = date.getDate();
+        const m = date.getMonth() + 1;
+        const y = date.getFullYear();
+        
+        // التحويل إلى Julian Day Number (JDN) - الطريقة الصحيحة
+        const a = Math.floor((14 - m) / 12);
+        const yy = y + 4800 - a;
+        const mm = m + 12 * a - 3;
+        const jdn = d + Math.floor((153 * mm + 2) / 5) + 365 * yy + Math.floor(yy / 4) - Math.floor(yy / 100) + Math.floor(yy / 400) - 32045;
+        
+        // إضافة تصحيح +1 لتوافق التقويم الرسمي
+        const adjustedJdn = jdn + 1;
+        
+        // التحويل من JDN إلى هجري
+        let l = adjustedJdn - 1948440 + 10632;
+        const n = Math.floor((l - 1) / 10631);
         l = l - 10631 * n + 354;
-        let j = Math.floor((10985 - l) / 5316) * Math.floor((50 * l) / 17719) + Math.floor(l / 5670) * Math.floor((43 * l) / 15238);
+        const j = Math.floor((10985 - l) / 5316) * Math.floor((50 * l) / 17719) + Math.floor(l / 5670) * Math.floor((43 * l) / 15238);
         l = l - Math.floor((30 - j) / 15) * Math.floor((17719 * j) / 50) - Math.floor(j / 16) * Math.floor((15238 * j) / 43) + 29;
-        let hM = Math.floor((24 * l) / 709), hD = l - Math.floor((709 * hM) / 24), hY = 30 * n + j - 30;
-        return { day: hD, month: hM, year: hY };
+        const hMonth = Math.floor((24 * l) / 709);
+        const hDay = l - Math.floor((709 * hMonth) / 24);
+        const hYear = 30 * n + j - 30;
+        
+        return { day: hDay, month: hMonth, year: hYear };
     }
 
     function updateTime() {
