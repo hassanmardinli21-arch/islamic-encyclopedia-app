@@ -255,8 +255,12 @@ HTML_TEMPLATE = r"""
         .header { background: var(--main-green); color: white; padding: 15px 20px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.2); position: sticky; top: 0; z-index: 100; }
         .header h1 { font-size: 26px; color: var(--gold); margin-bottom: 12px; }
         .top-actions { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-        .top-btn { background: #2d6a4f; color: white; border: 1px solid rgba(255,255,255,0.2); padding: 8px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; font-family: inherit; font-weight: bold; position: relative; min-height: 40px; }
+        .top-btn { background: #2d6a4f; color: white; border: 1px solid rgba(255,255,255,0.2); padding: 8px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; font-family: inherit; font-weight: bold; position: relative; min-height: 40px; transition: all 0.2s; }
         .top-btn:hover { background: #40916c; }
+        .top-btn.wake-active { background: var(--gold); color: #1a4d2e; font-weight: bold; animation: wake-pulse 2s infinite; }
+        @keyframes wake-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(201, 169, 97, 0.7); } 50% { box-shadow: 0 0 0 8px rgba(201, 169, 97, 0); } }
+        .wake-notification { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--main-green); color: white; padding: 12px 24px; border-radius: 25px; font-size: 15px; font-weight: bold; z-index: 3000; box-shadow: 0 4px 20px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s, transform 0.3s; pointer-events: none; text-align: center; max-width: 90vw; }
+        .wake-notification.show { opacity: 1; transform: translateX(-50%) translateY(0); }
         .badge { position: absolute; top: -5px; left: -5px; background: #e74c3c; color: white; font-size: 11px; padding: 2px 6px; border-radius: 10px; font-weight: bold; }
         .timer-badge { background: #27ae60; color: white; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: bold; display: inline-flex; align-items: center; gap: 5px; }
 
@@ -424,7 +428,6 @@ HTML_TEMPLATE = r"""
         .bookmark-preview { font-size: 13px; color: #666; line-height: 1.5; }
         .bookmark-delete { background: #e74c3c; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 14px; min-height: 40px; }
 
-        /* Share buttons */
         .share-buttons { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 15px 0; }
         .share-btn { color: white; border: none; padding: 12px 16px; border-radius: 8px; cursor: pointer; font-family: inherit; font-weight: bold; min-height: 44px; font-size: 14px; }
         .share-btn.whatsapp { background: #25d366; }
@@ -469,6 +472,7 @@ HTML_TEMPLATE = r"""
     <h1>🕌 الموسوعة الإسلامية الشاملة 📚</h1>
     <div class="top-actions">
         <button class="top-btn" onclick="toggleDark()">🌙 ليلي</button>
+        <button class="top-btn" id="wakeLockBtn" onclick="toggleWakeLock()">💡 إبقاء الشاشة</button>
         <button class="top-btn" onclick="detectLocation()">📍 الموقع</button>
         <button class="top-btn" onclick="showBookmarksList()">📑 العلامات <span class="badge" id="bookmarkBadge" style="display:none;">0</span></button>
         <button class="top-btn" onclick="showNotesModal()">🗒️ ملاحظاتي <span class="badge" id="notesBadge" style="display:none;">0</span></button>
@@ -530,17 +534,15 @@ HTML_TEMPLATE = r"""
     </div>
 </div>
 
-<!-- Flash Message -->
 <div class="flash-container" id="flashContainer">
     <div class="flash-box">
         <div class="flash-title">✨ أهلاً بك في الموسوعة الإسلامية الشاملة</div>
         <div class="flash-content">
             <span class="section-title">🎉 آخر التحديثات:</span>
             <ul>
+                <li>✅ زر إبقاء الشاشة مضيئة 💡</li>
                 <li>✅ إصلاح الحروف المنفصلة في العربية</li>
                 <li>✅ تمييز كلمات البحث بالأصفر</li>
-                <li>✅ إصلاح البحث مع التشكيل</li>
-                <li>✅ عرض صفحة السياق للآية</li>
                 <li>✅ فهرس جانبي للنتائج</li>
                 <li>✅ قسم مشاركة التطبيق</li>
             </ul>
@@ -551,6 +553,7 @@ HTML_TEMPLATE = r"""
                 <li>🕌 مواقيت الصلاة والتاريخ الهجري</li>
                 <li>🔖 علامات مرجعية وملاحظات</li>
                 <li>⏱️ عداد وقت القراءة</li>
+                <li>💡 إبقاء الشاشة مضيئة</li>
             </ul>
         </div>
         <div class="flash-buttons">
@@ -561,7 +564,6 @@ HTML_TEMPLATE = r"""
     </div>
 </div>
 
-<!-- نافذة التعليمات -->
 <div class="modal-overlay" id="instructionsModal" onclick="if(event.target===this) hideInstructions()">
     <div class="modal-content">
         <button class="modal-close" onclick="hideInstructions()">✕</button>
@@ -570,51 +572,29 @@ HTML_TEMPLATE = r"""
         <div style="background:#f0f8f0; padding:15px; border-radius:10px; margin-bottom:15px; border-right:4px solid var(--main-green);">
             <h3 style="color:var(--main-green); margin-bottom:10px;">🔍 البحث</h3>
             <ul style="padding-right:20px; line-height:2;">
-                <li><strong>بحث عادي:</strong> اختر كتاباً، اكتب كلمة في الصندوق، اضغط 🔍. يبحث في الكتاب المفتوح فقط.</li>
-                <li><strong>بحث في القرآن:</strong> افتح "القرآن الكريم"، اكتب كلمة، اضغط 🔍. يبحث في كل القرآن.</li>
-                <li><strong>بحث متقدم:</strong> اضغط "🔎 متقدم" لاختيار كتب محددة أو كل الكتب + القرآن.</li>
-                <li><strong>البحث في السورة:</strong> داخل السورة، استخدم خانة البحث الخاصة بها.</li>
+                <li><strong>بحث عادي:</strong> اختر كتاباً، اكتب كلمة، اضغط 🔍.</li>
+                <li><strong>بحث في القرآن:</strong> افتح "القرآن الكريم"، اكتب كلمة، اضغط 🔍.</li>
+                <li><strong>بحث متقدم:</strong> اضغط "🔎 متقدم" لاختيار كتب محددة أو الكل.</li>
             </ul>
         </div>
         
         <div style="background:#fff9e6; padding:15px; border-radius:10px; margin-bottom:15px; border-right:4px solid var(--gold);">
-            <h3 style="color:var(--main-green); margin-bottom:10px;">🗒️ الملاحظات</h3>
+            <h3 style="color:var(--main-green); margin-bottom:10px;">💡 إبقاء الشاشة مضيئة</h3>
             <ul style="padding-right:20px; line-height:2;">
-                <li>اضغط زر <strong>"🗒️ ملاحظاتي"</strong> أعلى الصفحة.</li>
-                <li>اضغط <strong>"✚ إضافة ملاحظة جديدة"</strong>.</li>
-                <li>اكتب النص، اختر التصنيف (عام/قرآن/حديث)، ثم احفظ.</li>
-                <li>من داخل أي حديث أو آية، اضغط زر <strong>"🗒️ ملاحظة"</strong> لإضافة ملاحظة مرتبطة بها.</li>
-                <li>الملاحظات محفوظة في متصفحك فقط (لا تظهر في أجهزة أخرى).</li>
-                <li>استخدم <strong>"📥 تصدير"</strong> للاحتفاظ بنسخة احتياطية.</li>
+                <li>اضغط زر <strong>"💡 إبقاء الشاشة"</strong> أعلى الصفحة.</li>
+                <li>سيتحول الزر إلى <strong>"🔆 الشاشة مضيئة"</strong> بالذهبي.</li>
+                <li>الشاشة ستبقى مضيئة أثناء القراءة.</li>
+                <li>لإلغاء الميزة: اضغط الزر مرة أخرى.</li>
+                <li>الحالة محفوظة تلقائياً — ستعود عند إعادة فتح التطبيق.</li>
             </ul>
         </div>
         
         <div style="background:#f0f9ff; padding:15px; border-radius:10px; margin-bottom:15px; border-right:4px solid #2980b9;">
-            <h3 style="color:var(--main-green); margin-bottom:10px;">🔖 العلامات المرجعية</h3>
+            <h3 style="color:var(--main-green); margin-bottom:10px;">🗒️ الملاحظات والعلامات</h3>
             <ul style="padding-right:20px; line-height:2;">
-                <li>من أي حديث أو آية، اضغط زر <strong>"🔖 علامة"</strong> لحفظ الموضع.</li>
-                <li>للعرض: اضغط <strong>"📑 العلامات"</strong> أعلى الصفحة.</li>
-                <li>اضغط على أي علامة للانتقال إليها مباشرة.</li>
-            </ul>
-        </div>
-        
-        <div style="background:#fdf6e3; padding:15px; border-radius:10px; margin-bottom:15px; border-right:4px solid #e67e22;">
-            <h3 style="color:var(--main-green); margin-bottom:10px;">📖 القراءة</h3>
-            <ul style="padding-right:20px; line-height:2;">
-                <li>للتنقل بين السور: استخدم القائمة المنسدلة أعلى السورة.</li>
-                <li>للتفسير: اضغط على الآية، ثم اضغط <strong>"📖 التفسير"</strong>.</li>
-                <li>لعرض صفحة كاملة (الآية والسياق): اضغط <strong>"📄 عرض الصفحة"</strong>.</li>
-                <li>للتكبير/التصغير: استخدم أزرار ➕ ➖ أعلى الصفحة.</li>
-            </ul>
-        </div>
-        
-        <div style="background:#f9f9f9; padding:15px; border-radius:10px; border-right:4px solid #95a5a6;">
-            <h3 style="color:var(--main-green); margin-bottom:10px;">⚙️ إعدادات أخرى</h3>
-            <ul style="padding-right:20px; line-height:2;">
-                <li><strong>🌙 ليلي:</strong> تفعيل الوضع الليلي المريح للعين.</li>
-                <li><strong>📍 الموقع:</strong> لتحديث مواقيت الصلاة.</li>
-                <li><strong>⏱️ عداد القراءة:</strong> يعمل تلقائياً عند فتح أي كتاب أو سورة.</li>
-                <li><strong>ℹ️ حول:</strong> معلومات المطور وطرق التواصل والمشاركة.</li>
+                <li>أضف ملاحظات من أي حديث أو آية.</li>
+                <li>احفظ موضعك بزر <strong>"🔖 علامة"</strong>.</li>
+                <li>الملاحظات محفوظة في متصفحك فقط.</li>
             </ul>
         </div>
         
@@ -624,7 +604,6 @@ HTML_TEMPLATE = r"""
     </div>
 </div>
 
-<!-- نافذة البحث المتقدم -->
 <div class="modal-overlay" id="advSearchModal" onclick="if(event.target===this) hideAdvancedSearch()">
     <div class="modal-content">
         <button class="modal-close" onclick="hideAdvancedSearch()">✕</button>
@@ -655,7 +634,6 @@ HTML_TEMPLATE = r"""
     </div>
 </div>
 
-<!-- نافذة الملاحظات -->
 <div class="modal-overlay" id="notesModal" onclick="if(event.target===this) hideNotesModal()">
     <div class="modal-content">
         <button class="modal-close" onclick="hideNotesModal()">✕</button>
@@ -696,7 +674,6 @@ HTML_TEMPLATE = r"""
     </div>
 </div>
 
-<!-- نافذة حول التطبيق - مع قسم المشاركة -->
 <div class="modal-overlay" id="aboutModal" onclick="if(event.target===this) hideAbout()">
     <div class="modal-content">
         <button class="modal-close" onclick="hideAbout()">✕</button>
@@ -751,11 +728,118 @@ HTML_TEMPLATE = r"""
     let quranViewMode = 'full';
     let contextAyahNum = null;
 
+    // ============ Wake Lock ============
+    let wakeLock = null;
+    let wakeLockDesired = false;
+
+    function showWakeNotification(msg) {
+        let notif = document.getElementById('wakeNotification');
+        if (!notif) {
+            notif = document.createElement('div');
+            notif.id = 'wakeNotification';
+            notif.className = 'wake-notification';
+            document.body.appendChild(notif);
+        }
+        notif.innerText = msg;
+        notif.classList.add('show');
+        setTimeout(() => notif.classList.remove('show'), 2500);
+    }
+
+    function updateWakeLockBtn() {
+        const btn = document.getElementById('wakeLockBtn');
+        if (!btn) return;
+        if (wakeLockDesired && wakeLock) {
+            btn.innerHTML = '🔆 الشاشة مضيئة';
+            btn.classList.add('wake-active');
+        } else {
+            btn.innerHTML = '💡 إبقاء الشاشة';
+            btn.classList.remove('wake-active');
+        }
+    }
+
+    async function requestWakeLock() {
+        if (!('wakeLock' in navigator)) {
+            alert('⚠️ جهازك أو متصفحك لا يدعم ميزة إبقاء الشاشة مضيئة.\n\nجرب تحديث المتصفح أو استخدام Chrome/Safari الحديث.');
+            return false;
+        }
+        try {
+            wakeLock = await navigator.wakeLock.request('screen');
+            wakeLock.addEventListener('release', () => {
+                updateWakeLockBtn();
+            });
+            wakeLockDesired = true;
+            localStorage.setItem('wakeLockEnabled', 'true');
+            updateWakeLockBtn();
+            showWakeNotification('💡 وضع القراءة مفعّل — الشاشة ستبقى مضيئة');
+            return true;
+        } catch (e) {
+            console.error('Wake Lock error:', e);
+            wakeLockDesired = false;
+            wakeLock = null;
+            updateWakeLockBtn();
+            showWakeNotification('⚠️ تعذّر تفعيل الميزة');
+            return false;
+        }
+    }
+
+    async function releaseWakeLock() {
+        wakeLockDesired = false;
+        localStorage.setItem('wakeLockEnabled', 'false');
+        if (wakeLock) {
+            try { await wakeLock.release(); } catch(e) {}
+            wakeLock = null;
+        }
+        updateWakeLockBtn();
+        showWakeNotification('🌙 الشاشة عادت للوضع الطبيعي');
+    }
+
+    async function toggleWakeLock() {
+        if (wakeLockDesired) {
+            await releaseWakeLock();
+        } else {
+            await requestWakeLock();
+        }
+    }
+
+    // استعادة الحالة عند فتح الصفحة
+    (async function initWakeLock() {
+        const wasEnabled = localStorage.getItem('wakeLockEnabled') === 'true';
+        if (wasEnabled && 'wakeLock' in navigator) {
+            wakeLockDesired = true;
+            updateWakeLockBtn();
+            try {
+                wakeLock = await navigator.wakeLock.request('screen');
+                wakeLock.addEventListener('release', () => {
+                    updateWakeLockBtn();
+                });
+                updateWakeLockBtn();
+            } catch(e) {
+                console.log('Wake Lock auto-restore failed:', e);
+                wakeLockDesired = false;
+                localStorage.setItem('wakeLockEnabled', 'false');
+                updateWakeLockBtn();
+            }
+        }
+    })();
+
+    // إعادة التفعيل تلقائياً عند العودة للصفحة
+    document.addEventListener('visibilitychange', async () => {
+        if (document.visibilityState === 'visible' && wakeLockDesired && !wakeLock) {
+            try {
+                wakeLock = await navigator.wakeLock.request('screen');
+                wakeLock.addEventListener('release', () => { updateWakeLockBtn(); });
+                updateWakeLockBtn();
+            } catch(e) {
+                console.log('Wake Lock re-request failed:', e);
+            }
+        }
+    });
+
     // ============ Flash Message ============
     function checkFlash() {
         const hideForever = localStorage.getItem('hideFlashForever');
         const lastVersion = localStorage.getItem('appVersion');
-        const CURRENT_VERSION = '1.6';
+        const CURRENT_VERSION = '1.7';
         
         if (hideForever === 'true') return;
         if (lastVersion === CURRENT_VERSION) return;
@@ -767,7 +851,7 @@ HTML_TEMPLATE = r"""
     
     function closeFlash() {
         document.getElementById('flashContainer').classList.remove('show');
-        localStorage.setItem('appVersion', '1.6');
+        localStorage.setItem('appVersion', '1.7');
     }
     
     function neverShowFlash() {
@@ -945,14 +1029,14 @@ HTML_TEMPLATE = r"""
         document.querySelectorAll('.hadith-text, .ayah-line').forEach(el => el.style.fontSize = fontSize + 'px');
     }
 
-    // ============ المشاركة ============
     function shareApp(platform) {
         const appUrl = window.location.origin;
         const message = '🕌 الموسوعة الإسلامية الشاملة 📚\n\n' +
                         '📖 القرآن الكريم كاملاً مع التفسير\n' +
                         '📚 14 كتاباً من كتب الحديث النبوي\n' +
                         '🕌 مواقيت الصلاة والتاريخ الهجري\n' +
-                        '🗒️ ملاحظات وعلامات مرجعية\n\n' +
+                        '🗒️ ملاحظات وعلامات مرجعية\n' +
+                        '💡 إبقاء الشاشة مضيئة\n\n' +
                         '✨ تطبيق مجاني يخدم الإسلام والمسلمين ✨\n\n' +
                         '🔗 ' + appUrl;
         
