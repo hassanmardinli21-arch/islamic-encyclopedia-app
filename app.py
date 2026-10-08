@@ -230,12 +230,12 @@ HTML_TEMPLATE = r"""
 <html lang="ar" dir="rtl">
 <head>
     <!-- Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-H1GL9JD2KP"></script>
+   <script async src="https://www.googletagmanager.com/gtag/js?id=G-H1GL9JD2KP"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-      gtag('config', 'G-H1GL9JD2KP');
+     gtag('config', 'G-H1GL9JD2KP');
     </script>
     <!-- End Google Analytics -->
     
